@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoteLock</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="app-container">
+
+    <aside class="sidebar">
+        <div class="logo">🔒 NoteLock</div>
+
+        <button id="add-note" class="primary-btn">+ Nouvelle note</button>
+
+        <nav>
+            <button class="sidebar-link active" data-filter="all">📚 Toutes les notes</button>
+            <button class="sidebar-link" id="favorites-filter">⭐ Favoris</button>
+            <button class="sidebar-link" id="locked-filter">🔐 Notes privées</button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <button class="sidebar-link" id="open-settings">⚙️ Paramètres</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h1>Mes notes</h1>
+                <p>Ton espace personnel</p>
+            </div>
+
+            <div class="account-area">
+                <button id="open-auth" class="secondary-btn">Connexion</button>
+            </div>
+        </header>
+
+        <section class="notes-section">
+            <div class="notes-toolbar">
+                <input type="search" id="search" placeholder="Rechercher une note...">
+                <span id="note-count">0 note</span>
+            </div>
+
+            <div id="notes-list" class="notes-grid"></div>
+        </section>
+
+    </main>
+</div>
+
+<!-- MODALE CREATION NOTE -->
+<div class="modal" id="note-modal">
+    <div class="modal-content">
+        <button class="close-modal" id="close-modal">✕</button>
+
+        <h2>Nouvelle note</h2>
+
+        <input type="text" id="note-title" placeholder="Titre de la note">
+        <textarea id="note-content" placeholder="Écris quelque chose..."></textarea>
+
+        <label class="checkbox-line">
+            <input type="checkbox" id="note-locked">
+            Protéger cette note avec un code
+        </label>
+
+        <input type="password" id="note-code" placeholder="Code secret (6 caractères minimum)">
+
+        <button id="save-note" class="primary-btn">Enregistrer</button>
+    </div>
+</div>
+
+<!-- MODALE PARAMETRES -->
+<div class="modal" id="settings-modal">
+    <div class="modal-content">
+        <button class="close-modal" id="close-settings">✕</button>
+
+        <h2>Paramètres</h2>
+
+        <label>Thème</label>
+        <select id="theme-setting">
+            <option value="dark">Sombre</option>
+            <option value="light">Clair</option>
+        </select>
+
+        <label>Taille du texte</label>
+        <select id="font-size-setting">
+            <option value="small">Petit</option>
+            <option value="medium">Normal</option>
+            <option value="large">Grand</option>
+        </select>
+
+        <label>Police</label>
+        <select id="font-family-setting">
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Georgia">Georgia</option>
+        </select>
+
+        <label class="checkbox-line">
+            <input type="checkbox" id="default-locked">
+            Protéger les nouvelles notes par défaut
+        </label>
+    </div>
+</div>
+
+<!-- MODALE CONNEXION / INSCRIPTION -->
+<div class="modal" id="auth-modal">
+    <div class="modal-content">
+        <button class="close-modal" id="close-auth">✕</button>
+
+        <h2 id="auth-title">Connexion</h2>
+        <p id="auth-description">Connecte-toi à ton espace NoteLock.</p>
+
+        <input type="email" id="auth-email" placeholder="Adresse e-mail">
+        <input type="password" id="auth-password" placeholder="Mot de passe">
+
+        <button id="auth-submit" class="primary-btn">Se connecter</button>
+
+        <p id="auth-message"></p>
+
+        <button id="auth-switch" class="text-btn">
+            Pas encore de compte ? Inscris-toi
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="{{ url_for('static', filename='supabase.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
+
+
