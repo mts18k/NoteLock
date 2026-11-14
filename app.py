@@ -1,6 +1,7 @@
 
 import os
 import base64
+import secrets
 from functools import wraps
 
 from flask import Flask, render_template, request, jsonify, session
@@ -12,13 +13,19 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Configuration : variables locales ou secrets Fly.io
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
-if not app.secret_key or not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("Configuration manquante dans le fichier .env")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
+
+# Vérification claire de la configuration
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "Configuration Supabase manquante : "
+        "vérifie SUPABASE_URL et SUPABASE_KEY dans les secrets Fly.io."
+    )
 
 
 # ==========================================
@@ -67,7 +74,6 @@ def generate_key(code, salt):
 def encrypt_content(content, code):
     salt = os.urandom(16)
     key = generate_key(code, salt)
-
     encrypted = Fernet(key).encrypt(content.encode())
 
     return encrypted.decode(), base64.b64encode(salt).decode()
@@ -125,7 +131,6 @@ def register():
 
     except Exception as error:
         print("ERREUR INSCRIPTION SUPABASE :", repr(error))
-
         return jsonify({
             "error": "Inscription impossible. Vérifie ton adresse ou réessaie."
         }), 400
@@ -143,9 +148,7 @@ def login():
     password = data.get("password", "")
 
     if not email or not password:
-        return jsonify({
-            "error": "Remplis tous les champs."
-        }), 400
+        return jsonify({"error": "Remplis tous les champs."}), 400
 
     try:
         client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -165,17 +168,12 @@ def login():
         session["user_id"] = result.user.id
         session["email"] = result.user.email
 
-        print("CONNEXION REUSSIE :", result.user.id)
-
-        return jsonify({
-            "message": "Connexion réussie."
-        })
+        return jsonify({"message": "Connexion réussie."})
 
     except Exception as error:
         print("ERREUR CONNEXION SUPABASE :", repr(error))
-
         return jsonify({
-            "error": "Erreur de connexion. Consulte le terminal."
+            "error": "Erreur de connexion. Consulte les journaux."
         }), 401
 
 
@@ -186,10 +184,7 @@ def login():
 @app.route("/api/auth/logout", methods=["POST"])
 def logout():
     session.clear()
-
-    return jsonify({
-        "message": "Déconnexion réussie."
-    })
+    return jsonify({"message": "Déconnexion réussie."})
 
 
 # ==========================================
@@ -217,9 +212,6 @@ def get_profile():
         client = get_client()
         user_id = session["user_id"]
 
-        if client is None:
-            raise Exception("Client Supabase indisponible.")
-
         result = (
             client.table("profiles")
             .select("id, username, avatar_url, created_at")
@@ -227,23 +219,16 @@ def get_profile():
             .execute()
         )
 
-        if result is None:
-            raise Exception("Réponse Supabase vide.")
-
         if result.data:
             profile = result.data[0]
         else:
-            created = (
-                client.table("profiles")
-                .insert({
-                    "id": user_id,
-                    "username": None,
-                    "avatar_url": None
-                })
-                .execute()
-            )
+            created = client.table("profiles").insert({
+                "id": user_id,
+                "username": None,
+                "avatar_url": None
+            }).execute()
 
-            if not created or not created.data:
+            if not created.data:
                 raise Exception("Impossible de créer le profil.")
 
             profile = created.data[0]
@@ -258,7 +243,6 @@ def get_profile():
 
     except Exception as error:
         print("ERREUR PROFIL :", repr(error))
-
         return jsonify({
             "error": "Impossible de récupérer le profil."
         }), 500
@@ -305,16 +289,11 @@ def update_profile():
         updates["avatar_url"] = avatar_url or None
 
     if not updates:
-        return jsonify({
-            "error": "Aucune modification reçue."
-        }), 400
+        return jsonify({"error": "Aucune modification reçue."}), 400
 
     try:
         client = get_client()
         user_id = session["user_id"]
-
-        if client is None:
-            raise Exception("Client Supabase indisponible.")
 
         existing = (
             client.table("profiles")
@@ -331,14 +310,10 @@ def update_profile():
                 .execute()
             )
         else:
-            result = (
-                client.table("profiles")
-                .insert({
-                    "id": user_id,
-                    **updates
-                })
-                .execute()
-            )
+            result = client.table("profiles").insert({
+                "id": user_id,
+                **updates
+            }).execute()
 
         if not result.data:
             return jsonify({
@@ -352,7 +327,6 @@ def update_profile():
 
     except Exception as error:
         print("ERREUR MODIFICATION PROFIL :", repr(error))
-
         return jsonify({
             "error": "Impossible de modifier le profil. Vérifie que le pseudo est disponible."
         }), 400
@@ -386,7 +360,6 @@ def get_notes():
 
     except Exception as error:
         print("ERREUR CHARGEMENT NOTES :", repr(error))
-
         return jsonify({
             "error": "Impossible de charger les notes."
         }), 500
@@ -412,9 +385,7 @@ def create_note():
         }), 400
 
     if len(title) > 120:
-        return jsonify({
-            "error": "Titre trop long."
-        }), 400
+        return jsonify({"error": "Titre trop long."}), 400
 
     salt = None
 
@@ -441,7 +412,6 @@ def create_note():
 
     except Exception as error:
         print("ERREUR CREATION NOTE :", repr(error))
-
         return jsonify({
             "error": "Impossible de créer la note."
         }), 500
@@ -472,10 +442,7 @@ def get_note(note_id):
 
     except Exception as error:
         print("ERREUR RECUPERATION NOTE :", repr(error))
-
-        return jsonify({
-            "error": "Note introuvable."
-        }), 404
+        return jsonify({"error": "Note introuvable."}), 404
 
 
 # ==========================================
@@ -505,12 +472,10 @@ def unlock_note(note_id):
         )
 
         note["content"] = content
-
         return jsonify(note)
 
     except Exception as error:
         print("ERREUR DEVERROUILLAGE :", repr(error))
-
         return jsonify({
             "error": "Code incorrect ou note introuvable."
         }), 403
@@ -552,7 +517,6 @@ def update_note(note_id):
 
     except Exception as error:
         print("ERREUR MODIFICATION NOTE :", repr(error))
-
         return jsonify({
             "error": "Modification impossible."
         }), 500
@@ -591,7 +555,6 @@ def edit_locked_note(note_id):
             }), 400
 
         decrypt_content(note["content"], code, note["salt"])
-
         encrypted, salt = encrypt_content(content, code)
 
         updated = client.table("notes").update({
@@ -604,7 +567,6 @@ def edit_locked_note(note_id):
 
     except Exception as error:
         print("ERREUR MODIFICATION NOTE VERROUILLEE :", repr(error))
-
         return jsonify({
             "error": "Code incorrect ou modification impossible."
         }), 403
@@ -630,21 +592,16 @@ def delete_note(note_id):
         note = result.data
 
         if note["locked"]:
-            decrypt_content(
-                note["content"], code, note["salt"]
-            )
+            decrypt_content(note["content"], code, note["salt"])
 
         client.table("notes").delete().eq(
             "id", note_id
         ).execute()
 
-        return jsonify({
-            "message": "Note supprimée."
-        })
+        return jsonify({"message": "Note supprimée."})
 
     except Exception as error:
         print("ERREUR SUPPRESSION NOTE :", repr(error))
-
         return jsonify({
             "error": "Code incorrect ou suppression impossible."
         }), 403
@@ -656,7 +613,8 @@ def delete_note(note_id):
 
 if __name__ == "__main__":
     app.run(
-        host="127.0.0.1",
-        port=5001,
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 5001)),
         debug=False
     )
+
